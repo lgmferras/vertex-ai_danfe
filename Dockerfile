@@ -1,4 +1,4 @@
-FROM python:3.11.3-alpine3.18
+FROM ubuntu:22.04
 LABEL maintainer="lgmferras@gmail.com"
 
 # Essa variável de ambiente é usada para controlar se o Python deve 
@@ -26,7 +26,14 @@ EXPOSE 8000
 # imagem como uma nova camada.
 # Agrupar os comandos em um único RUN pode reduzir a quantidade de camadas da 
 # imagem e torná-la mais eficiente.
-RUN python -m venv /venv && \
+RUN apt-get update && apt-get install -y \
+  python3 \
+  python3-pip \
+  python3-venv \
+  build-essential \
+  netcat \
+  && rm -rf /var/lib/apt/lists/* && \ 
+  python3 -m venv /venv && \
   /venv/bin/pip install --upgrade pip && \
   /venv/bin/pip install -r /danfeapp/requirements.txt && \
   adduser --disabled-password --no-create-home duser && \

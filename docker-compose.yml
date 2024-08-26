@@ -3,8 +3,9 @@ services:
     container_name: danfeapp
     build:
       context: .
+      # dockerfile: ./Dockerfile
     ports:
-      - 8080:8000  # Mapeia a porta 8080 do host para a porta 8000 do container
+      - 8000:8000  # Mapeia a porta 8080 do host para a porta 8000 do container
     volumes:
       - ./danfeapp:/danfeapp
       - ./data/web/static:/data/web/static/
@@ -13,7 +14,7 @@ services:
       - ./dotenv_files/.env
     depends_on:
       - psql
-      - mongodb
+      # - mongodb
 
   psql:
     container_name: psql
@@ -29,6 +30,6 @@ services:
     ports:
       - 27017:27017  # Porta padrão do MongoDB
     volumes:
-      - ./data/mongodb:/data/db
+      - ./data/mongodb/data:/data/db
     env_file:
       - ./dotenv_files/.env  # Usa o mesmo arquivo .env para o MongoDB
