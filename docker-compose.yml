@@ -5,27 +5,28 @@ services:
       context: .
       # dockerfile: ./Dockerfile
     ports:
-      - 8000:8000  # Mapeia a porta 8080 do host para a porta 8000 do container
+      - 8080:8000  # Mapeia a porta 8080 do host para a porta 8000 do container
     volumes:
       - ./danfeapp:/danfeapp
       - ./data/web/static:/data/web/static/
       - ./data/web/media:/data/web/media/
+      - ~/.config/gcloud/:/data/gcloud/
     env_file:
       - ./dotenv_files/.env
     depends_on:
-      - psql
-      # - mongodb
+      - psql_danfeapp
+      # - mongodb_danfeapp
 
-  psql:
-    container_name: psql
+  psql_danfeapp:
+    container_name: psql_danfeapp
     image: postgres:13-alpine
     volumes:
       - ./data/postgres/data:/var/lib/postgresql/data/
     env_file:
       - ./dotenv_files/.env
 
-  mongodb:
-    container_name: mongodb
+  mongodb_danfeapp:
+    container_name: mongodb_danfeapp
     image: mongo:latest
     ports:
       - 27017:27017  # Porta padrão do MongoDB

@@ -21,6 +21,11 @@ WORKDIR /danfeapp
 # É a porta que vamos usar para o Django.
 EXPOSE 8000
 
+# Define a variável de ambiente DEBIAN_FRONTEND para noninteractive.
+ENV DEBIAN_FRONTEND=noninteractive
+# Define a variável de ambiente TZ para America/Sao_Paulo.
+ENV TZ=America/Sao_Paulo
+
 # RUN executa comandos em um shell dentro do container para construir a imagem. 
 # O resultado da execução do comando é armazenado no sistema de arquivos da 
 # imagem como uma nova camada.
@@ -32,26 +37,23 @@ RUN apt-get update && apt-get install -y \
   python3-venv \
   build-essential \
   netcat \
+  tzdata \
+  sudo \
   && rm -rf /var/lib/apt/lists/* && \ 
   python3 -m venv /venv && \
   /venv/bin/pip install --upgrade pip && \
   /venv/bin/pip install -r /danfeapp/requirements.txt && \
-  adduser --disabled-password --no-create-home duser && \
+  adduser --disabled-password --gecos "" duser && \
+  usermod -aG sudo duser && \
+  echo "duser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
   mkdir -p /data/web/static && \
   mkdir -p /data/web/media && \
-  chown -R duser:duser /venv && \
-  chown -R duser:duser /data/web/static && \
-  chown -R duser:duser /data/web/media && \
-  chmod -R 755 /data/web/static && \
-  chmod -R 755 /data/web/media && \
+  sudo chown -R duser:duser /venv && \
+  sudo chown -R duser:duser /data && \
+  sudo chown -R duser:duser /data/web/static && \
+  sudo chown -R duser:duser /data/web/media && \
+  sudo chmod -R 755 /data && \
   chmod -R +x /scripts
-
-# Adiciona a pasta scripts e venv/bin 
-# no $PATH do container.
 ENV PATH="/scripts:/venv/bin:$PATH"
-
-# Muda o usuário para duser
 USER duser
-
-# Executa o arquivo scripts/commands.sh
 CMD ["commands.sh"]

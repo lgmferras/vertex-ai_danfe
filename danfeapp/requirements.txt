@@ -4,6 +4,8 @@ cachetools==5.5.0
 certifi==2024.7.4
 charset-normalizer==3.3.2
 Django==5.1
+django-storages==1.14.4
+dnspython==2.6.1
 docstring_parser==0.16
 google-api-core==2.19.1
 google-auth==2.34.0
@@ -21,6 +23,7 @@ grpcio-status==1.66.0
 idna==3.8
 numpy==2.1.0
 packaging==24.1
+pillow==10.4.0
 proto-plus==1.24.0
 protobuf==5.27.3
 psycopg2-binary==2.9.9
@@ -28,6 +31,7 @@ pyasn1==0.6.0
 pyasn1_modules==0.4.0
 pydantic==2.8.2
 pydantic_core==2.20.1
+pymongo==4.8.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 requests==2.32.3
