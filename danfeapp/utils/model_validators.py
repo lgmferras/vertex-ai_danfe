@@ -12,6 +12,11 @@ def ensure_txt_directory_exists():
     if not os.path.exists(media_path):
         os.makedirs(media_path)
 
+def ensure_json_directory_exists():
+    json_path = os.path.join(settings.MEDIA_ROOT, 'json/')
+    if not os.path.exists(json_path):
+        os.makedirs(json_path)
+
 def validate_pdf(pdf):
     if not pdf.name.lower().endswith('.pdf'):
         raise ValidationError('O arquivo não é um PDF')
@@ -113,11 +118,45 @@ def save_danfe(danfe):
                 mime_type="application/pdf",
                 data=base64.b64encode(data).decode("utf-8"),
             )
+            text1 = os.getenv('GCLOUD_TEXT_PROMPT')
 
-            dados_json = generate_danfe(document1)
+            generate_danfe(document1,text1,danfe.name)
+            print(f"\nDANFE salvo com sucesso!")
 
     finally:
-        ...    
+        os.remove(temp_path)
 
-def generate_danfe(document1):
-    ...
+def generate_danfe(document1,text1,filename):
+    vertexai.init(project=str(os.getenv('GCLOUD_PROJECT_ID')), location=str(os.getenv('GCLOUD_LOCATION')))
+    model = GenerativeModel(
+        str(os.getenv('GCLOUD_MODEL')),
+    )
+    responses = model.generate_content(
+        [document1, text1],
+        generation_config=generation_config,
+        safety_settings=safety_settings,
+        stream=True,
+    )
+
+    response_text = ""
+    dados_json = None 
+    
+    for response in responses:
+        print(response.text, end="")
+        response_text += response.text        
+        linha_json = re.search(r'`json(.*?)`', response_text, re.DOTALL)
+        if linha_json:
+            json_texto = linha_json.group(1)
+            try:
+                dados_json = json.loads(json_texto)
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON: {e}")
+                raise ValidationError(f'Error decoding JSON: {e}')
+        if dados_json:
+            ensure_json_directory_exists()
+            json_path = os.path.join(settings.MEDIA_ROOT, 'json/', filename.replace('.pdf', '.json'))
+            with open(json_path, 'w') as output_file:
+                json.dump(dados_json, output_file, ensure_ascii=False, indent=4)
+    
+    return dados_json
+

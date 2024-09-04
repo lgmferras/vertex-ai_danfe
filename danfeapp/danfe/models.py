@@ -1,5 +1,5 @@
 from django.db import models
-from utils.model_validators import validate_danfe
+from utils.model_validators import validate_danfe, save_danfe
 from project import settings
 
 
@@ -24,12 +24,13 @@ class Danfe(models.Model):
         self.slug = self.arquivo_pdf.name
         if settings.DEBUG:
             print(f"\n\U00002705 Saving {self.arquivo_pdf.name}")
+        save_danfe(self.arquivo_pdf)
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):                    
         if settings.DEBUG:
             print(f"\n\U0000274C Deleting {self.arquivo_pdf.name}")
-        self.arquivo_pdf.delete()
+        self.arquivo_pdf.delete(save=False)
         super().delete(*args, **kwargs)
 
     def __str__(self):
