@@ -6,6 +6,8 @@ import os
 import re
 import json
 from project import settings
+from pymongo import MongoClient
+
 
 def ensure_txt_directory_exists():
     media_path = os.path.join(settings.MEDIA_ROOT, 'txt/')
@@ -41,8 +43,10 @@ def validate_danfe(danfe):
             Se o arquivo representar um Documento Auxiliar da Nota Fiscal Eletrônica(DANFE), retorne TRUE, se não retorne FALSE. A resposta tem que ser em um JSON com a estrutura: {"is_danfe": ""}"""
             
             response_text, dados_json = generate_validade(document1, text1)
+            if dados_json is None:
+                raise ValidationError(f'A I.A. não conseguiu verificar se o arquivo {danfe.name} é um DANFE')
             if not dados_json.get('is_danfe'):
-                raise ValidationError('A I.A. não identificou o arquivo como um DANFE')
+                raise ValidationError(f'A I.A. não identificou o arquivo {danfe.name} como um DANFE. A resposta da I.A. foi: {response_text}')
             if settings.DEBUG:
                 ensure_txt_directory_exists()
                 media_path = os.path.join(settings.MEDIA_ROOT, 'txt/', danfe.name.replace('.pdf', '.txt'))
@@ -66,7 +70,8 @@ def generate_validade(document1, text1):
     dados_json = None 
     
     for response in responses:
-        print(response.text, end="")
+        if settings.DEBUG:
+            print(response.text, end="")
         response_text += response.text        
         linha_json = re.search(r'`json(.*?)`', response_text, re.DOTALL)
         if linha_json:
@@ -120,8 +125,10 @@ def save_danfe(danfe):
             )
             text1 = os.getenv('GCLOUD_TEXT_PROMPT')
 
-            generate_danfe(document1,text1,danfe.name)
-            print(f"\nDANFE salvo com sucesso!")
+            dados_json, json_path = generate_danfe(document1,text1,danfe.name)
+            print(f"\n\U00002705 Arquivo {danfe.name} salvo com sucesso!")
+            return dados_json, json_path
+            
 
     finally:
         os.remove(temp_path)
@@ -141,22 +148,51 @@ def generate_danfe(document1,text1,filename):
     response_text = ""
     dados_json = None 
     
-    for response in responses:
-        print(response.text, end="")
+    for response in responses:        
+        if settings.DEBUG:
+            print(response.text, end="")
         response_text += response.text        
         linha_json = re.search(r'`json(.*?)`', response_text, re.DOTALL)
         if linha_json:
             json_texto = linha_json.group(1)
             try:
                 dados_json = json.loads(json_texto)
+                if not isinstance(dados_json, dict):
+                        raise ValidationError('O JSON gerado não é um dicionário válido')
             except json.JSONDecodeError as e:
-                print(f"Error decoding JSON: {e}")
+                print(f"\n\U0000274C Error decoding JSON: {e}")
                 raise ValidationError(f'Error decoding JSON: {e}')
         if dados_json:
             ensure_json_directory_exists()
             json_path = os.path.join(settings.MEDIA_ROOT, 'json/', filename.replace('.pdf', '.json'))
-            with open(json_path, 'w') as output_file:
-                json.dump(dados_json, output_file, ensure_ascii=False, indent=4)
+            json_filename = filename.replace('.pdf', '.json')
+            try:
+                with open(json_path, 'w') as output_file:
+                    json.dump(dados_json, output_file, ensure_ascii=False, indent=4)
+            finally:
+                print(f"\n\U00002705 Arquivo {json_filename} salvo com sucesso em: {json_path}")
     
-    return dados_json
+    return dados_json, json_path
 
+# Função Para Inserir o JSON no Banco de Dados
+def insert_json_danfe(dados_json):
+    try:
+        client = MongoClient(str(os.getenv('MONGODB_HOST')), int(os.getenv('MONGODB_PORT')))
+        db = client[str(os.getenv('MONGODB_DB'))]
+        colecao = db[str(os.getenv('MONGODB_COLLECTION'))]
+        if client is not None and db is not None and colecao is not None:
+            print(f"\n\U00002705 Conectado ao banco de dados {os.getenv('MONGODB_DB')} e coleção {os.getenv('MONGODB_COLLECTION')}")
+            print(f"\n\U00002705 JSON PATH: {dados_json}")
+            colecao.insert_one(dados_json)
+            print(f"\n\U00002705 JSON inserido com sucesso no MongoDB.")
+        else:
+            raise ValidationError('Erro ao conectar ao banco de dados ou coleção não encontrada.')
+        print(f"\n\U00002705 JSON inserido com sucesso no MongoDB.")
+    
+    except Exception as e:
+        print(f"\n\U0000274C Ocorreu um erro ao inserir o JSON no MongoDB: {e}")
+        raise ValidationError(f'Error inserting JSON: {e}')
+    
+    finally:
+        client.close()
+    
